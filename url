@@ -1,0 +1,4 @@
+inner
+postgresql://chicken_nation_db_user:8Xgl7Zu6yiHLFt8gjFwUsXEvcDaR4aeN@dpg-dba8g88m7kps73fsq440-a/chicken_nation_db
+external
+postgresql://chicken_nation_db_user:8Xgl7Zu6yiHLFt8gjFwUsXEvcDaR4aeN@dpg-dba8g88m7kps73fsq440-a.oregon-postgres.render.com/chicken_nation_db

@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(express.json());
@@ -16,6 +17,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+// --- AUTOMATIC DATABASE INITIALIZATION FROM schema.sql ---
+async function initializeDatabase() {
+  try {
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+      await pool.query(schemaSql);
+      console.log('✅ Database schema and seed data verified/initialized successfully.');
+    } else {
+      console.warn('⚠️ Warning: schema.sql file not found in root directory.');
+    }
+  } catch (err) {
+    console.error('❌ Error executing schema.sql on startup:', err.message);
+  }
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
@@ -223,13 +240,12 @@ app.get('/api/reports', verifyAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 // --- WIPE EVERYTHING (ADMIN) ---
 app.delete('/api/reports', verifyAdmin, async (req, res) => {
   try {
     await pool.query('BEGIN');
-    // 1. Wipe all redemption logs
     await pool.query('DELETE FROM redemption_logs');
-    // 2. Wipe all coupons entirely from the database
     await pool.query('DELETE FROM coupons');
     await pool.query('COMMIT');
 
@@ -275,6 +291,10 @@ app.delete('/api/staff/:id', verifyAdmin, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Chicken Nation Coupons running live on port ${PORT}`);
+
+// Initialize database schema first, then start server
+initializeDatabase().then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Chicken Nation Coupons running live on port ${PORT}`);
+  });
 });
