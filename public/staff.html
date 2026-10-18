@@ -21,29 +21,33 @@
   <!-- Main Container -->
   <main class="flex-1 max-w-4xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
     
-    <!-- Left Column: Manual Entry & Camera Scanner -->
+    <!-- Left Column: Manual Entry & Camera Scanner Trigger -->
     <div class="space-y-6">
       
-      <!-- Manual Entry Form -->
+      <!-- Manual Entry & Form -->
       <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
-        <h2 class="text-lg font-semibold mb-3 text-orange-600">Manual Coupon Entry</h2>
+        <h2 class="text-lg font-semibold mb-3 text-orange-600">Coupon Redemption</h2>
         <form id="redeemForm" class="space-y-4">
           <div>
             <label class="block text-sm font-medium">Coupon Code</label>
-            <input type="text" id="couponCode" required placeholder="e.g. CN123456FS" class="w-full mt-1 p-3 border rounded uppercase font-mono">
+            <div class="flex gap-2 mt-1">
+              <input type="text" id="couponCode" required placeholder="e.g. CN123456FS" class="w-full p-3 border rounded uppercase font-mono">
+              <button type="button" onclick="toggleScanner()" id="scanBtn" class="bg-gray-800 hover:bg-gray-900 text-white px-4 rounded text-sm font-medium transition whitespace-nowrap">📷 Scan</button>
+            </div>
           </div>
+
+          <!-- Hidden Camera Viewport container -->
+          <div id="scannerContainer" class="hidden space-y-2 border p-3 rounded bg-gray-50">
+            <div id="reader" class="w-full rounded overflow-hidden"></div>
+            <button type="button" onclick="stopScanner()" class="w-full bg-red-500 hover:bg-red-600 text-white text-xs py-2 rounded transition">Close Camera</button>
+          </div>
+
           <div>
             <label class="block text-sm font-medium">Customer Name</label>
-            <input type="text" id="customerName" placeholder="Customer Name (Optional)" class="w-full mt-1 p-3 border rounded">
+            <input type="text" id="customerName" placeholder="Enter customer name..." class="w-full mt-1 p-3 border rounded">
           </div>
           <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded shadow transition">Verify & Redeem</button>
         </form>
-      </div>
-
-      <!-- Live Camera QR Scanner Box -->
-      <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
-        <h2 class="text-lg font-semibold mb-3 text-orange-600">Scan Customer QR Code</h2>
-        <div id="reader" class="w-full rounded overflow-hidden border"></div>
       </div>
 
     </div>
@@ -79,7 +83,65 @@
       window.location.href = '/index.html';
     }
 
-    // Handle Manual Redemption Submission
+    let html5QrCode = null;
+    let isScanning = false;
+
+    // Toggle Camera On/Off safely on button click
+    async function toggleScanner() {
+      const container = document.getElementById('scannerContainer');
+      const scanBtn = document.getElementById('scanBtn');
+
+      if (!isScanning) {
+        container.classList.remove('hidden');
+        scanBtn.textContent = 'Starting...';
+        
+        try {
+          if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+          }
+          
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 220, height: 220 } },
+            (decodedText) => {
+              // SUCCESS SCAN: Only populates the code and stops camera. Staff can now add name & click submit!
+              document.getElementById('couponCode').value = decodedText;
+              stopScanner();
+              document.getElementById('customerName').focus();
+            }
+          );
+          isScanning = true;
+          scanBtn.textContent = 'Scanning...';
+          scanBtn.classList.replace('bg-gray-800', 'bg-green-600');
+        } catch (err) {
+          console.error("Camera error:", err);
+          alert('Could not access camera. Please check camera permissions.');
+          container.classList.add('hidden');
+          scanBtn.textContent = '📷 Scan';
+          isScanning = false;
+        }
+      } else {
+        stopScanner();
+      }
+    }
+
+    function stopScanner() {
+      if (html5QrCode && isScanning) {
+        html5QrCode.stop().then(() => {
+          isScanning = false;
+          document.getElementById('scannerContainer').classList.add('hidden');
+          const scanBtn = document.getElementById('scanBtn');
+          scanBtn.textContent = '📷 Scan';
+          scanBtn.classList.replace('bg-green-600', 'bg-gray-800');
+        }).catch(err => console.error("Failed to stop scanner", err));
+      } else {
+        document.getElementById('scannerContainer').classList.add('hidden');
+        isScanning = false;
+        document.getElementById('scanBtn').textContent = '📷 Scan';
+      }
+    }
+
+    // Handle Manual / Form Redemption Submission
     document.getElementById('redeemForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const code = document.getElementById('couponCode').value.trim();
@@ -121,6 +183,7 @@
             </div>
           `;
           document.getElementById('couponCode').value = '';
+          document.getElementById('customerName').value = '';
         } else {
           resultBox.innerHTML = `
             <div class="bg-red-100 border border-red-400 text-red-800 p-4 rounded-lg text-left space-y-1">
@@ -138,28 +201,6 @@
         `;
       }
     }
-
-    // Initialize Direct Camera Live Scanner (Using Html5Qrcode for camera view)
-    function onScanSuccess(decodedText, decodedResult) {
-      document.getElementById('couponCode').value = decodedText;
-      processRedemption(decodedText, 'Camera Scan Customer');
-    }
-
-    const html5QrCode = new Html5Qrcode("reader");
-    const config = { fps: 10, qrbox: { width: 230, height: 230 } };
-
-    // Automatically start rear camera on phones
-    html5QrCode.start(
-      { facingMode: "environment" }, 
-      config, 
-      onScanSuccess
-    ).catch(err => {
-      // Fallback to any available camera if environment camera fails
-      console.warn("Rear camera not found, trying default camera...", err);
-      html5QrCode.start({ facingMode: "user" }, config, onScanSuccess).catch(error => {
-        document.getElementById('reader').innerHTML = `<p class="p-4 text-sm text-red-600 text-center">Camera permission denied or unavailable. Please use manual entry above.</p>`;
-      });
-    });
   </script>
 </body>
 </html>
