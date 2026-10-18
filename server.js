@@ -17,20 +17,97 @@ app.use(express.static(path.join(__dirname, 'public')));
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
-
-// --- AUTOMATIC DATABASE INITIALIZATION FROM schema.sql ---
+// --- AUTOMATIC DATABASE & ADMIN INITIALIZATION ---
 async function initializeDatabase() {
   try {
-    const schemaPath = path.join(__dirname, 'schema.sql');
-    if (fs.existsSync(schemaPath)) {
-      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-      await pool.query(schemaSql);
-      console.log('✅ Database schema and seed data verified/initialized successfully.');
+    // 1. Enable UUID extension
+    await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+
+    // 2. Create custom ENUM types safely
+    await pool.query(`
+      DO $$ BEGIN
+        CREATE TYPE user_role AS ENUM ('ADMIN', 'STAFF');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    await pool.query(`
+      DO $$ BEGIN
+        CREATE TYPE coupon_suffix AS ENUM ('FS', 'BL');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    // 3. Create Users Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(150) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role user_role NOT NULL DEFAULT 'STAFF',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 4. Create Coupons Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS coupons (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        code VARCHAR(50) UNIQUE NOT NULL,
+        offer_details TEXT NOT NULL, 
+        terms_and_conditions TEXT,
+        max_uses INT NOT NULL DEFAULT 1,
+        current_uses INT NOT NULL DEFAULT 0,
+        cooldown_days INT DEFAULT 0, 
+        last_redeemed_at TIMESTAMP WITH TIME ZONE,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        suffix coupon_suffix NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 5. Create Redemption Logs Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS redemption_logs (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        coupon_id UUID REFERENCES coupons(id) ON DELETE CASCADE,
+        coupon_code VARCHAR(50) NOT NULL,
+        staff_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        staff_name VARCHAR(100) NOT NULL,
+        customer_name VARCHAR(100) DEFAULT 'Anonymous',
+        redeemed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 6. Ensure Default Admin Account Exists with fresh bcrypt hash
+    const adminEmail = 'admin@chickennation.com';
+    const salt = await bcrypt.genSalt(10);
+    const defaultPasswordHash = await bcrypt.hash('password123', salt);
+
+    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [adminEmail]);
+
+    if (userCheck.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)`,
+        ['Super Admin', adminEmail, defaultPasswordHash, 'ADMIN']
+      );
+      console.log('✅ Default admin account created: admin@chickennation.com / password123');
     } else {
-      console.warn('⚠️ Warning: schema.sql file not found in root directory.');
+      // Update existing admin password to guarantee password123 works
+      await pool.query(
+        `UPDATE users SET password_hash = $1 WHERE email = $2`,
+        [defaultPasswordHash, adminEmail]
+      );
+      console.log('✅ Admin password verified and reset to password123');
     }
+
   } catch (err) {
-    console.error('❌ Error executing schema.sql on startup:', err.message);
+    console.error('❌ Error initializing database:', err.message);
   }
 }
 
