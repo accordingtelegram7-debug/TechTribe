@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chicken Nation Coupons - Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+  <div class="bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-700">
+    <div class="text-center mb-6">
+      <h1 class="text-2xl font-bold text-orange-500">Chicken Nation</h1>
+      <p class="text-gray-400 text-sm">Coupon Management System</p>
+    </div>
+
+    <form id="loginForm" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-300">Email Address</label>
+        <input type="email" id="email" required class="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-orange-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300">Password</label>
+        <input type="password" id="password" required class="w-full mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-orange-500">
+      </div>
+      <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 py-2 rounded-lg font-semibold transition">Login</button>
+    </form>
+    <p id="errorMsg" class="text-red-400 text-sm text-center mt-4 hidden"></p>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorMsg = document.getElementById('errorMsg');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        localStorage.setItem('name', data.name);
+
+        if (data.role === 'ADMIN') {
+          window.location.href = '/admin.html';
+        } else {
+          window.location.href = '/staff.html';
+        }
+      } catch (err) {
+        errorMsg.textContent = err.message;
+        errorMsg.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

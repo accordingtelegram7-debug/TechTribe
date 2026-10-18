@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <header class="bg-gray-900 text-white p-4 flex justify-between items-center shadow">
+  <div class="flex items-center space-x-3">
+    <img src="/logo.png" alt="Chicken Nation Logo" class="h-9 w-9 object-contain rounded">
+    
+  </div>
+
+</header>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Redemption Portal - Chicken Nation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Html5-qrcode library for camera scanning -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 flex flex-col h-screen justify-between">
+
+  <!-- Header -->
+  <header class="bg-gray-900 text-white p-4 flex justify-between items-center shadow">
+    <h1 class="text-xl font-bold text-orange-500">Chicken Nation - Staff Portal</h1>
+    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm transition">Logout</button>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-4xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
+    
+    <!-- Left Column: Manual Entry & Camera Scanner -->
+    <div class="space-y-6">
+      
+      <!-- Manual Entry Form -->
+      <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
+        <h2 class="text-lg font-semibold mb-3 text-orange-600">Manual Coupon Entry</h2>
+        <form id="redeemForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium">Coupon Code</label>
+            <input type="text" id="couponCode" required placeholder="e.g. CN123456FS" class="w-full mt-1 p-3 border rounded uppercase font-mono">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Customer Name</label>
+            <input type="text" id="customerName" placeholder="Customer Name (Optional)" class="w-full mt-1 p-3 border rounded">
+          </div>
+          <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded shadow transition">Verify & Redeem</button>
+        </form>
+      </div>
+
+      <!-- Camera QR Scanner Box -->
+      <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
+        <h2 class="text-lg font-semibold mb-3 text-orange-600">Scan Customer QR Code</h2>
+        <div id="reader" class="w-full rounded overflow-hidden border"></div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Live Feedback & Offer Display -->
+    <div class="space-y-6">
+      <div class="bg-white p-6 rounded-xl shadow border border-gray-200 h-full flex flex-col justify-between">
+        <div>
+          <h2 class="text-lg font-semibold mb-4 text-gray-800">Redemption Status & Offer</h2>
+          
+          <!-- Result Box -->
+          <div id="resultBox" class="p-4 rounded-lg bg-gray-50 border border-gray-200 text-center">
+            <p class="text-gray-500 italic">Ready to scan or enter a coupon code...</p>
+          </div>
+        </div>
+
+        <div class="mt-6 border-t pt-4 text-xs text-gray-500 text-center">
+          <p>Make sure to verify customer ID or eligibility before final redemption.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token || localStorage.getItem('role') !== 'STAFF') {
+      window.location.href = '/index.html';
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = '/index.html';
+    }
+
+    // Handle Manual Redemption Submission
+    document.getElementById('redeemForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = document.getElementById('couponCode').value.trim();
+      const customerName = document.getElementById('customerName').value.trim() || 'Anonymous';
+      await processRedemption(code, customerName);
+    });
+
+    // API Call to Redeem Coupon
+    async function processRedemption(code, customerName) {
+      const resultBox = document.getElementById('resultBox');
+      resultBox.innerHTML = `<p class="text-blue-600 font-medium">Processing code: ${code}...</p>`;
+
+      try {
+        const res = await fetch('/api/coupons/redeem', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ code, customerName })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          // SUCCESS: Show prominent offer details so staff knows what to give!
+          const coupon = data.coupon || {};
+          resultBox.innerHTML = `
+            <div class="bg-green-100 border border-green-400 text-green-800 p-4 rounded-lg text-left space-y-2 shadow-sm">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-lg text-green-900">✅ REDEEMED SUCCESSFULLY!</span>
+              </div>
+              <div class="bg-white p-3 rounded border border-green-200">
+                <p class="text-xs text-gray-500 uppercase font-bold tracking-wide">What to hand to customer:</p>
+                <p class="text-xl font-extrabold text-orange-600 mt-1">${data.offer || coupon.offer_details || 'Offer applied'}</p>
+                <p class="text-xs text-gray-600 mt-1"><strong>Terms:</strong> ${coupon.terms_and_conditions || 'None specified'}</p>
+              </div>
+              <p class="text-xs text-gray-700"><strong>Customer:</strong> ${customerName}</p>
+              <p class="text-xs text-gray-700"><strong>Uses:</strong> ${coupon.current_uses || '1'} / ${coupon.max_uses || '1'}</p>
+            </div>
+          `;
+          document.getElementById('couponCode').value = '';
+        } else {
+          // ERROR (Expired, invalid, or cooldown active)
+          resultBox.innerHTML = `
+            <div class="bg-red-100 border border-red-400 text-red-800 p-4 rounded-lg text-left space-y-1">
+              <p class="font-bold text-red-900">❌ Redemption Failed</p>
+              <p class="text-sm">${data.error || 'Invalid coupon code.'}</p>
+            </div>
+          `;
+        }
+      } catch (err) {
+        resultBox.innerHTML = `
+          <div class="bg-red-100 border border-red-400 text-red-800 p-4 rounded-lg text-left">
+            <p class="font-bold">❌ Network Error</p>
+            <p class="text-sm">Could not connect to server.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Initialize Camera QR Code Scanner
+    function onScanSuccess(decodedText, decodedResult) {
+      document.getElementById('couponCode').value = decodedText;
+      processRedemption(decodedText, 'Camera Scan Customer');
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader", { fps: 10, qrbox: 250 }, false
+    );
+    html5QrcodeScanner.render(onScanSuccess);
+  </script>
+</body>
+</html>

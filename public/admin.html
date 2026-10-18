@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Chicken Nation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printableArea, #printableArea * { visibility: visible; }
+      #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .coupon-card { page-break-inside: avoid; border: 2px dashed #000; margin: 15px; padding: 20px; display: inline-block; width: 45%; background: #fff; color: #000; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-900 flex flex-col h-screen justify-between">
+
+  <!-- Header with Logo -->
+  <header class="bg-gray-900 text-white p-4 flex justify-between items-center shadow z-10">
+    <div class="flex items-center space-x-3">
+      <img src="/logo.png" alt="Chicken Nation Logo" class="h-9 w-9 object-contain rounded">
+      <h1 class="text-xl font-bold text-orange-500">Chicken Nation - Admin Portal</h1>
+    </div>
+    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm transition">Logout</button>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Sidebar -->
+    <div class="w-64 bg-gray-900 text-white flex flex-col justify-between p-4 hidden md:flex">
+      <nav class="space-y-2">
+        <button onclick="switchTab('dashboard')" class="w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition font-medium">Dashboard & Coupons</button>
+        <button onclick="switchTab('reports')" class="w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition font-medium">Redemption Reports</button>
+        <button onclick="switchTab('staff')" class="w-full text-left px-4 py-2 rounded hover:bg-gray-800 transition font-medium">Staff Management</button>
+      </nav>
+      <div class="text-xs text-gray-500 text-center pt-4 border-t border-gray-800">
+        <p>Chicken Nation System v1.0</p>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+      
+      <!-- TAB 1: COUPONS & GENERATOR -->
+      <div id="tab-dashboard" class="space-y-6">
+        <div class="flex justify-between items-center flex-wrap gap-4">
+          <h1 class="text-2xl font-bold">Admin Coupon Control</h1>
+          <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow transition">Print Active Coupons</button>
+        </div>
+
+        <!-- BIG METRIC CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-xl shadow border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500">Total Created Coupons</p>
+              <h3 id="statTotal" class="text-3xl font-bold text-gray-900 mt-1">0</h3>
+            </div>
+            <div class="p-3 bg-orange-100 text-orange-600 rounded-full font-bold">📦</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500">Active Available Coupons</p>
+              <h3 id="statActive" class="text-3xl font-bold text-green-600 mt-1">0</h3>
+            </div>
+            <div class="p-3 bg-green-100 text-green-600 rounded-full font-bold">✅</div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500">Total Redemptions Logged</p>
+              <h3 id="statRedeemed" class="text-3xl font-bold text-blue-600 mt-1">0</h3>
+            </div>
+            <div class="p-3 bg-blue-100 text-blue-600 rounded-full font-bold">🔥</div>
+          </div>
+        </div>
+
+        <!-- Generator Form -->
+        <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
+          <h3 class="text-lg font-semibold mb-4 text-orange-600">Generate New Coupon</h3>
+          <form id="generateForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium">Offer Details</label>
+              <input type="text" id="offer" required placeholder="e.g. 20% OFF Bucket" class="w-full mt-1 p-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Terms & Conditions</label>
+              <input type="text" id="terms" placeholder="Valid at main branch only" class="w-full mt-1 p-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Max Uses (Set > 1 for Jackpot)</label>
+              <input type="number" id="maxUses" value="1" min="1" class="w-full mt-1 p-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Cooldown Days (Multi-use wait time)</label>
+              <input type="number" id="cooldownDays" value="0" min="0" class="w-full mt-1 p-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Expiration Date</label>
+              <input type="datetime-local" id="expiresAt" required class="w-full mt-1 p-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Suffix</label>
+              <select id="suffix" class="w-full mt-1 p-2 border rounded">
+                <option value="FS">FS</option>
+                <option value="BL">BL</option>
+              </select>
+            </div>
+            <div class="md:col-span-3">
+              <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-6 rounded transition">Generate Coupon</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Active Coupons List & Printable Area -->
+        <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
+          <h3 class="text-lg font-semibold mb-2">Active & Available Coupons</h3>
+          <p class="text-xs text-gray-500 mb-4">Exhausted or expired coupons automatically hide from this active section.</p>
+          <div id="printableArea" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Dynamically populated active coupon cards -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: REPORTS -->
+      <div id="tab-reports" class="hidden space-y-6">
+        <div class="flex justify-between items-center">
+          <h1 class="text-2xl font-bold">Redemption Reports Log</h1>
+          <button onclick="clearReports()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow transition text-sm font-semibold">Wipe All Data (Coupons & Reports)</button>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow overflow-x-auto border border-gray-200">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b bg-gray-50 text-sm text-gray-600">
+                <th class="p-3">Coupon Code</th>
+                <th class="p-3">Offer</th>
+                <th class="p-3">Customer Name</th>
+                <th class="p-3">Staff Redeemer</th>
+                <th class="p-3">Redeemed At</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: STAFF MANAGEMENT -->
+      <div id="tab-staff" class="hidden space-y-6">
+        <h1 class="text-2xl font-bold">Staff Management</h1>
+        <div class="bg-white p-6 rounded-xl shadow max-w-lg border border-gray-200">
+          <h3 class="text-lg font-semibold mb-4 text-orange-600">Assign New Staff</h3>
+          <form id="staffForm" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium">Name</label>
+              <input type="text" id="staffName" required class="w-full mt-1 p-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Email</label>
+              <input type="email" id="staffEmail" required class="w-full mt-1 p-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Password</label>
+              <input type="password" id="staffPassword" required class="w-full mt-1 p-2 border rounded">
+            </div>
+            <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded transition">Create Staff Account</button>
+          </form>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
+          <h3 class="text-lg font-semibold mb-4">Existing Staff Accounts</h3>
+          <div id="staffList" class="space-y-2"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token || localStorage.getItem('role') !== 'ADMIN') window.location.href = '/index.html';
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = '/index.html';
+    }
+
+    function switchTab(tab) {
+      document.getElementById('tab-dashboard').classList.add('hidden');
+      document.getElementById('tab-reports').classList.add('hidden');
+      document.getElementById('tab-staff').classList.add('hidden');
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+      if (tab === 'reports') loadReports();
+      if (tab === 'staff') loadStaff();
+    }
+
+    // Load Coupons & Metrics with Smart Active Filtering
+    async function loadCoupons() {
+      const res = await fetch('/api/coupons', { headers: { 'Authorization': `Bearer ${token}` } });
+      const coupons = res.ok ? await res.json() : [];
+      
+      const now = new Date();
+      const totalCreated = coupons.length;
+      
+      // Filter out expired or fully exhausted coupons from the active view
+      const activeCouponsList = coupons.filter(c => 
+        c.is_active && 
+        c.current_uses < c.max_uses && 
+        new Date(c.expires_at) > now
+      );
+
+      const activeCount = activeCouponsList.length;
+      const totalRedeemed = coupons.reduce((acc, c) => acc + c.current_uses, 0);
+
+      document.getElementById('statTotal').textContent = totalCreated;
+      document.getElementById('statActive').textContent = activeCount;
+      document.getElementById('statRedeemed').textContent = totalRedeemed;
+
+      const container = document.getElementById('printableArea');
+      container.innerHTML = '';
+
+      if (activeCouponsList.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 italic md:col-span-2 p-6 text-center bg-gray-50 rounded-lg border border-dashed">No active coupons available. Fully used or expired coupons are automatically hidden from this list.</p>';
+        return;
+      }
+
+      activeCouponsList.forEach(c => {
+        const isJackpot = c.max_uses > 1;
+        const card = document.createElement('div');
+        card.className = 'coupon-card border p-4 rounded-lg shadow-sm flex flex-col justify-between bg-white';
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-bold text-orange-600 font-mono">${c.code}</span>
+              <span class="text-xs bg-gray-100 px-2 py-1 rounded border">Uses: ${c.current_uses}/${c.max_uses}</span>
+            </div>
+            ${isJackpot ? `<div class="mb-2 bg-yellow-100 text-yellow-800 border border-yellow-300 font-bold text-xs px-2 py-1 rounded text-center">✨ JACKPOT SPECIAL (${c.max_uses} USES)</div>` : ''}
+            <p class="text-sm font-medium">${c.offer_details}</p>
+            <p class="text-xs text-gray-500 mt-1">${c.terms_and_conditions || ''}</p>
+            ${isJackpot ? `<p class="text-xs text-orange-600 font-bold mt-1">⏳ Cooldown: ${c.cooldown_days} day(s) between uses.</p>` : ''}
+          </div>
+          <div class="my-3 flex justify-center" id="qr-${c.code}"></div>
+          <div class="flex justify-between items-center text-xs text-gray-600 mt-2">
+            <span>Expires: ${new Date(c.expires_at).toLocaleDateString()}</span>
+            <button onclick="deleteCoupon('${c.id}')" class="text-red-500 hover:underline no-print font-medium">Delete</button>
+          </div>
+        `;
+        container.appendChild(card);
+        new QRCode(document.getElementById(`qr-${c.code}`), { text: c.code, width: 90, height: 90 });
+      });
+    }
+
+    async function clearReports() {
+      if (!confirm('Are you sure you want to WIPE EVERYTHING? This will permanently delete all coupons and all redemption report logs. This action cannot be undone.')) return;
+      
+      const res = await fetch('/api/reports', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        alert('All system data (coupons and reports) successfully wiped!');
+        loadReports(); // Refresh empty table
+        loadCoupons(); // Refresh dashboard metrics (everything back to 0)
+      } else {
+        alert('Failed to wipe system data.');
+      }
+    }
+
+    // Generate Coupon Form
+    document.getElementById('generateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        offer: document.getElementById('offer').value,
+        terms: document.getElementById('terms').value,
+        maxUses: parseInt(document.getElementById('maxUses').value),
+        cooldownDays: parseInt(document.getElementById('cooldownDays').value),
+        expiresAt: document.getElementById('expiresAt').value,
+        suffix: document.getElementById('suffix').value
+      };
+
+      const res = await fetch('/api/coupons/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        alert('Coupon generated successfully!');
+        loadCoupons();
+        e.target.reset();
+      }
+    });
+
+    async function deleteCoupon(id) {
+      if (!confirm('Are you sure you want to delete this coupon?')) return;
+      await fetch(`/api/coupons/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      loadCoupons();
+    }
+
+    async function loadReports() {
+      const res = await fetch('/api/reports', { headers: { 'Authorization': `Bearer ${token}` } });
+      const reports = res.ok ? await res.json() : [];
+      const tbody = document.getElementById('reportsTableBody');
+      tbody.innerHTML = reports.map(r => `
+        <tr class="border-b hover:bg-gray-50 text-sm">
+          <td class="p-3 font-mono font-bold text-orange-600">${r.coupon_code}</td>
+          <td class="p-3">${r.offer_details}</td>
+          <td class="p-3">${r.customer_name}</td>
+          <td class="p-3 font-medium">${r.staff_name}</td>
+          <td class="p-3 text-gray-500">${new Date(r.redeemed_at).toLocaleString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadStaff() {
+      const res = await fetch('/api/staff', { headers: { 'Authorization': `Bearer ${token}` } });
+      const staff = res.ok ? await res.json() : [];
+      const list = document.getElementById('staffList');
+      list.innerHTML = staff.map(s => `
+        <div class="flex justify-between items-center p-3 border rounded bg-gray-50">
+          <div>
+            <p class="font-semibold">${s.name} <span class="text-xs text-gray-500 font-normal">(${s.email})</span></p>
+          </div>
+          <button onclick="deleteStaff('${s.id}')" class="text-red-500 text-sm hover:underline font-medium">Delete</button>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('staffForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        name: document.getElementById('staffName').value,
+        email: document.getElementById('staffEmail').value,
+        password: document.getElementById('staffPassword').value
+      };
+      const res = await fetch('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        alert('Staff account created successfully!');
+        loadStaff();
+        e.target.reset();
+      }
+    });
+
+    async function deleteStaff(id) {
+      if (!confirm('Are you sure you want to delete this staff account?')) return;
+      await fetch(`/api/staff/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      loadStaff();
+    }
+
+    // Initial load
+    loadCoupons();
+
+    // Auto-refresh data every 5 seconds (Real-Time Polling)
+    setInterval(() => {
+      const dashboardTab = document.getElementById('tab-dashboard');
+      const reportsTab = document.getElementById('tab-reports');
+      
+      if (dashboardTab && !dashboardTab.classList.contains('hidden')) {
+        loadCoupons();
+      } else if (reportsTab && !reportsTab.classList.contains('hidden')) {
+        loadReports();
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
