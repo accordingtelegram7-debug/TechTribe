@@ -345,23 +345,23 @@
     }
 
     document.getElementById('staffForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const body = {
-        name: document.getElementById('staffName').value,
-       email: document.getElementById('staffEmail').value,
-        password: document.getElementById('staffPassword').value
-      };
-      const res = await fetch('/api/staff', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body)
-      });
-      if (res.ok) {
-        alert('Staff account created successfully!');
-        loadStaff();
-        e.target.reset();
-      }
-    });
+  e.preventDefault();
+  const body = {
+    name: document.getElementById('staffName').value,
+    email: document.getElementById('staffEmail').value, // Fixed dot notation
+    password: document.getElementById('staffPassword').value
+  };
+  const res = await fetch('/api/staff', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(body)
+  });
+  if (res.ok) {
+    alert('Staff account created successfully!');
+    loadStaff();
+    e.target.reset();
+  }
+});
 
     async function deleteStaff(id) {
       if (!confirm('Are you sure you want to delete this staff account?')) return;
