@@ -263,7 +263,7 @@
       alert(`Coupon code "${code}" copied to clipboard!`);
     }
 
-    // Helper to open snapshot modal using custom pattern background
+    // Helper to open snapshot modal using custom pattern.svg background
     function shareWhatsApp(code, offer) {
       const decodedOffer = decodeURIComponent(offer);
       
@@ -291,10 +291,10 @@
             <body class="bg-gray-100 p-6 flex flex-col items-center justify-center min-h-screen text-center">
               <div class="space-y-4 max-w-sm w-full">
                 
-                <!-- The Snapshot Card Layout with Custom Food Pattern Background -->
-                <div id="captureCard" style="background-image: url('/pattern.jpg'); background-size: cover; background-position: center;" class="p-6 rounded-2xl shadow-2xl border border-orange-500/30 flex flex-col items-center space-y-4 relative overflow-hidden">
+                <!-- The Snapshot Card Layout targeting pattern.svg -->
+                <div id="captureCard" style="background-image: url('/pattern.svg'); background-size: cover; background-position: center;" class="p-6 rounded-2xl shadow-2xl border border-orange-500/30 flex flex-col items-center space-y-4 relative overflow-hidden">
                   
-                  <!-- Light glassmorphic overlay for maximum text readability -->
+                  <!-- Light overlay so the colorful SVG background shows while text remains crisp -->
                   <div class="absolute inset-0 bg-white/80 backdrop-blur-[1px]"></div>
 
                   <!-- Content -->
