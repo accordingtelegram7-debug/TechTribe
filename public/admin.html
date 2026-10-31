@@ -184,7 +184,6 @@
       document.getElementById('tab-staff').classList.add('hidden');
       document.getElementById(`tab-${tab}`).classList.remove('hidden');
 
-      // Update button active styles
       ['dashboard', 'reports', 'staff'].forEach(t => {
         const btn = document.getElementById(`btn-${t}`);
         if (t === tab) {
@@ -223,7 +222,7 @@
       container.innerHTML = '';
 
       if (activeCouponsList.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 italic md:col-span-2 p-6 text-center bg-gray-50 rounded-lg border border-dashed">No active coupons available. Fully used or expired coupons are automatically hidden from this list.</p>';
+        container.innerHTML = '<p class="text-gray-500 italic md:col-span-2 p-6 text-center bg-gray-50 rounded-lg border border-dashed">No active coupons available. Fully used or expired coupons are automatically hidden from this active section.</p>';
         return;
       }
 
@@ -243,14 +242,31 @@
             ${isJackpot ? `<p class="text-xs text-orange-600 font-bold mt-1">⏳ Cooldown: ${c.cooldown_days} day(s) between uses.</p>` : ''}
           </div>
           <div class="my-3 flex justify-center" id="qr-${c.code}"></div>
-          <div class="flex justify-between items-center text-xs text-gray-600 mt-2">
+          <div class="text-xs text-gray-600 mb-3 text-center">
             <span>Expires: ${new Date(c.expires_at).toLocaleDateString()}</span>
-            <button onclick="deleteCoupon('${c.id}')" class="text-red-500 hover:underline no-print font-medium">Delete</button>
+          </div>
+          <div class="flex flex-wrap gap-2 justify-between items-center text-xs pt-2 border-t no-print">
+            <button onclick="copyCode('${c.code}')" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-2.5 py-1.5 rounded font-semibold transition">📋 Copy Code</button>
+            <button onclick="shareWhatsApp('${c.code}', '${encodeURIComponent(c.offer_details)}')" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded font-semibold transition">💬 WhatsApp</button>
+            <button onclick="deleteCoupon('${c.id}')" class="text-red-500 hover:underline font-medium">Delete</button>
           </div>
         `;
         container.appendChild(card);
         new QRCode(document.getElementById(`qr-${c.code}`), { text: c.code, width: 90, height: 90 });
       });
+    }
+
+    // Helper to copy code to clipboard
+    function copyCode(code) {
+      navigator.clipboard.writeText(code);
+      alert(`Coupon code "${code}" copied to clipboard! You can now paste it anywhere.`);
+    }
+
+    // Helper to share via WhatsApp with pre-filled message
+    function shareWhatsApp(code, offer) {
+      const decodedOffer = decodeURIComponent(offer);
+      const text = `🎉 *Chicken Nation Coupon* 🎉\n\nHere is your exclusive coupon code: *${code}*\nOffer: ${decodedOffer}\n\nShow this code or QR code at our restaurant to redeem your reward! Enjoy! 🍗`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
     }
 
     async function clearReports() {
@@ -332,7 +348,7 @@
       e.preventDefault();
       const body = {
         name: document.getElementById('staffName').value,
-        email: document.getElementById('staffEmail').value,
+        email: document.getElementById('staffEmail')->value,
         password: document.getElementById('staffPassword').value
       };
       const res = await fetch('/api/staff', {
@@ -348,7 +364,7 @@
     });
 
     async function deleteStaff(id) {
-      if (!confirm('Are you sure you logo want to delete this staff account?')) return;
+      if (!confirm('Are you sure you want to delete this staff account?')) return;
       await fetch(`/api/staff/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       loadStaff();
     }
