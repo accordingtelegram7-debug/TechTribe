@@ -348,7 +348,7 @@
       e.preventDefault();
       const body = {
         name: document.getElementById('staffName').value,
-        email: document.getElementById('staffEmail')->value,
+       email: document.getElementById('staffEmail').value,
         password: document.getElementById('staffPassword').value
       };
       const res = await fetch('/api/staff', {
