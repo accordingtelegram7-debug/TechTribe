@@ -248,7 +248,7 @@
           </div>
           <div class="flex flex-wrap gap-2 justify-between items-center text-xs pt-2 border-t no-print">
             <button onclick="copyCode('${c.code}')" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-2.5 py-1.5 rounded font-semibold transition">📋 Copy Code</button>
-            <button onclick="shareWhatsApp('${c.code}', '${encodeURIComponent(c.offer_details)}')" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded font-semibold transition">💬 WhatsApp QR & Code</button>
+            <button onclick="shareWhatsApp('${c.code}', '${encodeURIComponent(c.offer_details)}')" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded font-semibold transition">💬 Share QR & Code</button>
             <button onclick="deleteCoupon('${c.id}')" class="text-red-500 hover:underline font-medium">Delete</button>
           </div>
         `;
@@ -260,10 +260,10 @@
     // Helper to copy code to clipboard
     function copyCode(code) {
       navigator.clipboard.writeText(code);
-      alert(`Coupon code "${code}" copied to clipboard! You can now paste it anywhere.`);
+      alert(`Coupon code "${code}" copied to clipboard!`);
     }
 
-    // Helper to share both text code and renderable QR code graphic
+    // Helper to open interactive share center with downloadable QR image & message text
     function shareWhatsApp(code, offer) {
       const decodedOffer = decodeURIComponent(offer);
       
@@ -293,27 +293,30 @@
                 <p class="text-lg font-mono bg-orange-50 text-orange-800 p-2 rounded font-extrabold border border-orange-200">${code}</p>
                 <p class="text-sm font-medium text-gray-700">${decodedOffer}</p>
                 
-                <div class="flex justify-center border p-3 rounded bg-gray-50">
-                  <img src="${qrDataUrl}" alt="QR Code for ${code}" class="w-48 h-48 rounded">
+                <div class="flex flex-col items-center justify-center border p-3 rounded bg-gray-50 space-y-2">
+                  <img id="qrImg" src="${qrDataUrl}" alt="QR Code for ${code}" class="w-48 h-48 rounded bg-white p-2 border">
+                  <a id="downloadBtn" href="${qrDataUrl}" download="ChickenNation-${code}.png" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">📥 Download QR Image</a>
                 </div>
                 
                 <p class="text-xs text-gray-500">
-                  1. Long-press or right-click the QR image above to <strong>Save / Copy Image</strong>.<br>
-                  2. Click <strong>Open WhatsApp Chat</strong> to send message text!
+                  <strong>How to share on WhatsApp:</strong><br>
+                  1. Click <strong>Download QR Image</strong> above.<br>
+                  2. Copy the text message below.<br>
+                  3. Open WhatsApp chat, attach the downloaded image, and paste the text!
                 </p>
                 
-                <textarea id="msgBox" readonly class="w-full h-24 p-2 text-xs border rounded bg-gray-50 font-mono">🎉 Chicken Nation Coupon 🎉\n\nCode: ${code}\nOffer: ${decodedOffer}\n\nShow this QR code or text code at our restaurant to redeem!</textarea>
+                <textarea id="msgBox" readonly class="w-full h-20 p-2 text-xs border rounded bg-gray-50 font-mono">🎉 Chicken Nation Coupon 🎉\n\nCode: ${code}\nOffer: ${decodedOffer}\n\nSave & scan this QR code or show code at our restaurant to redeem!</textarea>
                 
                 <div class="space-y-2">
-                  <button onclick="navigator.clipboard.writeText(document.getElementById('msgBox').value); alert('Message text copied!');" class="w-full bg-gray-800 text-white py-2 rounded font-semibold text-sm hover:bg-gray-900 transition">📋 Copy Text Code</button>
-                  <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(`🎉 *Chicken Nation Coupon* 🎉\n\nCode: *${code}*\nOffer: ${decodedOffer}\n\nShow this QR code or text code at our restaurant to redeem! 🍗`)}" target="_blank" class="block w-full bg-green-600 text-white py-2 rounded font-semibold text-sm hover:bg-green-700 text-center transition">💬 Open WhatsApp Chat</a>
+                  <button onclick="navigator.clipboard.writeText(document.getElementById('msgBox').value); alert('Message text copied to clipboard!');" class="w-full bg-gray-800 text-white py-2 rounded font-semibold text-sm hover:bg-gray-900 transition">📋 Copy Message Text</button>
+                  <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(`🎉 *Chicken Nation Coupon* 🎉\n\nCode: *${code}*\nOffer: ${decodedOffer}\n\n(Please find the attached QR code image above to scan at our restaurant! 🍗)`)}" target="_blank" class="block w-full bg-green-600 text-white py-2 rounded font-semibold text-sm hover:bg-green-700 text-center transition">💬 Open WhatsApp Chat</a>
                 </div>
               </div>
             </body>
           </html>
         `);
       } else {
-        alert('QR code image is generating. Please try again in a moment.');
+        alert('QR code image is still generating. Please try again in a moment.');
       }
     }
 
