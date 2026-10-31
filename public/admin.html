@@ -6,6 +6,7 @@
   <title>Admin Dashboard - Chicken Nation</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     @media print {
       body * { visibility: hidden; }
@@ -263,7 +264,7 @@
       alert(`Coupon code "${code}" copied to clipboard!`);
     }
 
-    // Helper to open interactive share center with downloadable QR image & message text
+    // Helper to open snapshot modal for card image sharing
     function shareWhatsApp(code, offer) {
       const decodedOffer = decodeURIComponent(offer);
       
@@ -284,39 +285,67 @@
           <!DOCTYPE html>
           <html>
             <head>
-              <title>Share Coupon - ${code}</title>
+              <title>Coupon Card - ${code}</title>
               <script src="https://cdn.tailwindcss.com"><\/script>
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
             </head>
             <body class="bg-gray-100 p-6 flex flex-col items-center justify-center min-h-screen text-center">
-              <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full space-y-4 border border-gray-200">
-                <h2 class="text-xl font-bold text-orange-600">Chicken Nation Coupon</h2>
-                <p class="text-lg font-mono bg-orange-50 text-orange-800 p-2 rounded font-extrabold border border-orange-200">${code}</p>
-                <p class="text-sm font-medium text-gray-700">${decodedOffer}</p>
+              <div class="space-y-4 max-w-sm w-full">
                 
-                <div class="flex flex-col items-center justify-center border p-3 rounded bg-gray-50 space-y-2">
-                  <img id="qrImg" src="${qrDataUrl}" alt="QR Code for ${code}" class="w-48 h-48 rounded bg-white p-2 border">
-                  <a id="downloadBtn" href="${qrDataUrl}" download="ChickenNation-${code}.png" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">📥 Download QR Image</a>
+                <!-- The Snapshot Card Layout -->
+                <div id="captureCard" class="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 flex flex-col items-center space-y-4">
+                  <h2 class="text-2xl font-extrabold text-orange-600 tracking-wide">Chicken Nation Coupon</h2>
+                  <div class="w-full bg-orange-50 border border-orange-200 py-3 px-4 rounded-xl">
+                    <span class="text-xl font-mono font-black text-orange-900 tracking-wider">${code}</span>
+                  </div>
+                  <p class="text-lg font-bold text-gray-800">${decodedOffer}</p>
+                  <div class="border-2 border-gray-100 p-3 rounded-xl bg-white shadow-inner flex justify-center">
+                    <img src="${qrDataUrl}" alt="QR Code" class="w-48 h-48 rounded">
+                  </div>
                 </div>
-                
-                <p class="text-xs text-gray-500">
-                  <strong>How to share on WhatsApp:</strong><br>
-                  1. Click <strong>Download QR Image</strong> above.<br>
-                  2. Copy the text message below.<br>
-                  3. Open WhatsApp chat, attach the downloaded image, and paste the text!
-                </p>
-                
-                <textarea id="msgBox" readonly class="w-full h-20 p-2 text-xs border rounded bg-gray-50 font-mono">🎉 Chicken Nation Coupon 🎉\n\nCode: ${code}\nOffer: ${decodedOffer}\n\nSave & scan this QR code or show code at our restaurant to redeem!</textarea>
-                
-                <div class="space-y-2">
-                  <button onclick="navigator.clipboard.writeText(document.getElementById('msgBox').value); alert('Message text copied to clipboard!');" class="w-full bg-gray-800 text-white py-2 rounded font-semibold text-sm hover:bg-gray-900 transition">📋 Copy Message Text</button>
-                  <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(`🎉 *Chicken Nation Coupon* 🎉\n\nCode: *${code}*\nOffer: ${decodedOffer}\n\n(Please find the attached QR code image above to scan at our restaurant! 🍗)`)}" target="_blank" class="block w-full bg-green-600 text-white py-2 rounded font-semibold text-sm hover:bg-green-700 text-center transition">💬 Open WhatsApp Chat</a>
+
+                <!-- Action Controls -->
+                <div class="bg-white p-4 rounded-xl shadow border space-y-3">
+                  <button onclick="generateAndDownload()" id="dlBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold text-sm transition shadow">📥 Download Coupon as Image</button>
+                  
+                  <textarea id="msgBox" readonly class="w-full h-24 p-2 text-xs border rounded-xl bg-gray-50 font-mono">🎉 Chicken Nation Coupon 🎉\n\nCode: ${code}\nOffer: ${decodedOffer}\n\nSave & scan this QR code or show code at our restaurant to redeem!</textarea>
+
+                  <button onclick="navigator.clipboard.writeText(document.getElementById('msgBox').value); alert('Message text copied!');" class="w-full bg-gray-800 text-white py-2 rounded-xl font-semibold text-sm hover:bg-gray-900 transition">📋 Copy Message Text</button>
+                  
+                  <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(`🎉 *Chicken Nation Coupon* 🎉\n\nCode: *${code}*\nOffer: ${decodedOffer}\n\nSave & scan this QR code or show code at our restaurant to redeem! 🍗`)}" target="_blank" class="block w-full bg-green-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-green-700 text-center transition shadow">💬 Open WhatsApp Chat</a>
                 </div>
+
               </div>
+
+              <script>
+                async function generateAndDownload() {
+                  const btn = document.getElementById('dlBtn');
+                  btn.textContent = 'Generating Image...';
+                  const card = document.getElementById('captureCard');
+                  
+                  try {
+                    const canvasResult = await html2canvas(card, { scale: 2, useCORS: true });
+                    const imageURL = canvasResult.toDataURL('image/png');
+                    
+                    const link = document.createElement('a');
+                    link.href = imageURL;
+                    link.download = 'ChickenNation-Coupon-${code}.png';
+                    link.click();
+                    
+                    btn.textContent = '✅ Downloaded Successfully!';
+                    setTimeout(() => { btn.textContent = '📥 Download Coupon as Image'; }, 3000);
+                  } catch (err) {
+                    console.error(err);
+                    alert('Could not generate image.');
+                    btn.textContent = '📥 Download Coupon as Image';
+                  }
+                }
+              <\/script>
             </body>
           </html>
         `);
       } else {
-        alert('QR code image is still generating. Please try again in a moment.');
+        alert('QR code image is still generating. Please try again.');
       }
     }
 
