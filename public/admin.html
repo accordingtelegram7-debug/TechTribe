@@ -264,7 +264,7 @@
       alert(`Coupon code "${code}" copied to clipboard!`);
     }
 
-    // Helper to open snapshot modal for card image sharing
+    // Helper to open snapshot modal featuring pattern background, clear QR code, and Vecteezy attribution
     function shareWhatsApp(code, offer) {
       const decodedOffer = decodeURIComponent(offer);
       
@@ -292,15 +292,29 @@
             <body class="bg-gray-100 p-6 flex flex-col items-center justify-center min-h-screen text-center">
               <div class="space-y-4 max-w-sm w-full">
                 
-                <!-- The Snapshot Card Layout -->
-                <div id="captureCard" class="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 flex flex-col items-center space-y-4">
-                  <h2 class="text-2xl font-extrabold text-orange-600 tracking-wide">Chicken Nation Coupon</h2>
-                  <div class="w-full bg-orange-50 border border-orange-200 py-3 px-4 rounded-xl">
+                <!-- The Snapshot Card Layout with Pattern Background -->
+                <div id="captureCard" style="background-image: url('/pattern.jpg'); background-size: cover; background-position: center;" class="p-6 rounded-2xl shadow-2xl border border-orange-500/30 flex flex-col items-center space-y-4 relative overflow-hidden">
+                  
+                  <!-- Semi-transparent overlay to ensure text contrast while showing background pattern -->
+                  <div class="absolute inset-0 bg-white/90 backdrop-blur-[1px]"></div>
+
+                  <!-- Content (Relative so it sits above overlay) -->
+                  <h2 class="relative z-10 text-2xl font-extrabold text-orange-600 tracking-wide">Chicken Nation Coupon</h2>
+                  
+                  <div class="relative z-10 w-full bg-orange-50/90 border border-orange-200 py-3 px-4 rounded-xl shadow-sm">
                     <span class="text-xl font-mono font-black text-orange-900 tracking-wider">${code}</span>
                   </div>
-                  <p class="text-lg font-bold text-gray-800">${decodedOffer}</p>
-                  <div class="border-2 border-gray-100 p-3 rounded-xl bg-white shadow-inner flex justify-center">
+                  
+                  <p class="relative z-10 text-lg font-bold text-gray-800">${decodedOffer}</p>
+                  
+                  <!-- Solid White QR container guarantees 100% scannability -->
+                  <div class="relative z-10 border-2 border-gray-200 p-3 rounded-xl bg-white shadow-md flex justify-center">
                     <img src="${qrDataUrl}" alt="QR Code" class="w-48 h-48 rounded">
+                  </div>
+
+                  <!-- Licensed Vecteezy Attribution -->
+                  <div class="relative z-10 pt-1 text-[10px] text-gray-500 font-medium">
+                    Background pattern licensed via <a href="https://www.vecteezy.com" target="_blank" class="underline text-orange-600 font-semibold">Vecteezy.com</a>
                   </div>
                 </div>
 
