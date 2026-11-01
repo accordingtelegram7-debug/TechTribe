@@ -12,7 +12,7 @@
       body * { visibility: hidden; }
       #printableArea, #printableArea * { visibility: visible; }
       #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
-      .coupon-card { page-break-inside: avoid; border: 2px dashed #000; margin: 15px; padding: 20px; display: inline-block; width: 45%; background: #fff; color: #000; }
+      .coupon-card { page-break-inside: avoid; margin: 15px; display: inline-block; width: 45%; }
       .no-print { display: none !important; }
     }
   </style>
@@ -112,7 +112,7 @@
         <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
           <h3 class="text-lg font-semibold mb-2">Active & Available Coupons</h3>
           <p class="text-xs text-gray-500 mb-4">Exhausted or expired coupons automatically hide from this active section.</p>
-          <div id="printableArea" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div id="printableArea" class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Dynamically populated active coupon cards -->
           </div>
         </div>
@@ -199,7 +199,7 @@
       if (tab === 'staff') loadStaff();
     }
 
-    // Load Coupons & Metrics
+    // Load Coupons & Metrics matching exact reference design
     async function loadCoupons() {
       const res = await fetch('/api/coupons', { headers: { 'Authorization': `Bearer ${token}` } });
       const coupons = res.ok ? await res.json() : [];
@@ -229,32 +229,67 @@
       }
 
       activeCouponsList.forEach(c => {
-        const isJackpot = c.max_uses > 1;
+        const formattedDate = new Date(c.expires_at).toLocaleDateString();
         const card = document.createElement('div');
-        card.className = 'coupon-card border p-4 rounded-lg shadow-sm flex flex-col justify-between bg-white';
+        
+        // Exact reference card styling: Yellow background with red dashed border and white interior box
+        card.className = 'coupon-card bg-amber-50 border-4 border-red-600 border-dashed p-4 rounded-xl shadow-lg flex flex-col justify-between';
         card.innerHTML = `
-          <div>
-            <div class="flex justify-between items-center mb-2">
-              <span class="font-bold text-orange-600 font-mono">${c.code}</span>
-              <span class="text-xs bg-gray-100 px-2 py-1 rounded border">Uses: ${c.current_uses}/${c.max_uses}</span>
+          <div class="bg-white border-2 border-red-600 rounded-lg p-4 flex flex-col items-center relative shadow-sm">
+            
+            <!-- Top Red Banner for Coupon Code & Yellow Use Badge -->
+            <div class="w-full bg-red-600 rounded-md p-2.5 text-white flex justify-between items-center shadow mb-3 relative">
+              <div class="text-center flex-1">
+                <div class="text-[10px] tracking-widest uppercase font-bold text-red-200">COUPON CODE</div>
+                <div class="text-lg font-mono font-black tracking-wider text-white">${c.code}</div>
+              </div>
+              <div class="bg-yellow-400 text-red-900 font-extrabold text-xs px-2.5 py-1 rounded shadow">
+                Use: ${c.current_uses}/${c.max_uses}
+              </div>
             </div>
-            ${isJackpot ? `<div class="mb-2 bg-yellow-100 text-yellow-800 border border-yellow-300 font-bold text-xs px-2 py-1 rounded text-center">✨ JACKPOT SPECIAL (${c.max_uses} USES)</div>` : ''}
-            <p class="text-sm font-medium">${c.offer_details}</p>
-            <p class="text-xs text-gray-500 mt-1">${c.terms_and_conditions || ''}</p>
-            ${isJackpot ? `<p class="text-xs text-orange-600 font-bold mt-1">⏳ Cooldown: ${c.cooldown_days} day(s) between uses.</p>` : ''}
+
+            <!-- Instructional Text -->
+            <p class="text-xs font-bold text-gray-900 text-center mb-3">Scan the QR Code or use the code at checkout</p>
+
+            <!-- QR Code Section with "Scan Me!" text -->
+            <div class="w-full flex items-center justify-around border-t border-b border-gray-100 py-3 my-1">
+              <div class="bg-white p-2 border rounded-lg shadow-inner flex justify-center" id="qr-${c.code}"></div>
+              <div class="text-center pl-2 border-l border-gray-200">
+                <span class="text-2xl font-serif italic font-bold text-red-900 block transform -rotate-6">Scan<br>Me!</span>
+                <div class="w-12 h-1 bg-yellow-400 mx-auto mt-1 rounded-full"></div>
+              </div>
+            </div>
+
+            <!-- Branch Location Banner -->
+            <div class="w-full bg-red-700 text-white text-center font-bold text-xs py-2 px-3 rounded-md my-3 shadow-sm">
+              ${c.offer_details ? c.offer_details : 'Use in Chicken Nation Bamuli only'}
+            </div>
+
+            <!-- Expiration Date Footer -->
+            <div class="w-full flex justify-between items-center pt-2 text-xs font-bold text-red-900 border-t border-gray-200">
+              <div class="flex items-center space-x-2">
+                <span class="text-lg">📅</span>
+                <div>
+                  <span class="text-[10px] uppercase text-gray-500 block">Expires:</span>
+                  <span class="text-red-600 font-extrabold">${formattedDate}</span>
+                </div>
+              </div>
+              <div class="text-right text-[10px] text-gray-400 italic">
+                Verified Asset
+              </div>
+            </div>
+
           </div>
-          <div class="my-3 flex justify-center" id="qr-${c.code}"></div>
-          <div class="text-xs text-gray-600 mb-3 text-center">
-            <span>Expires: ${new Date(c.expires_at).toLocaleDateString()}</span>
-          </div>
-          <div class="flex flex-wrap gap-2 justify-between items-center text-xs pt-2 border-t no-print">
-            <button onclick="copyCode('${c.code}')" class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-2.5 py-1.5 rounded font-semibold transition">📋 Copy Code</button>
-            <button onclick="shareWhatsApp('${c.code}', '${encodeURIComponent(c.offer_details)}')" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded font-semibold transition">💬 Share QR & Code</button>
-            <button onclick="deleteCoupon('${c.id}')" class="text-red-500 hover:underline font-medium">Delete</button>
+
+          <!-- Action Controls for Admin -->
+          <div class="flex flex-wrap gap-2 justify-between items-center text-xs pt-3 mt-2 border-t no-print">
+            <button onclick="copyCode('${c.code}')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded font-semibold transition">📋 Copy Code</button>
+            <button onclick="shareWhatsApp('${c.code}', '${encodeURIComponent(c.offer_details || 'Use in Chicken Nation Bamuli only')}', '${formattedDate}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded font-semibold transition shadow">💬 Share Coupon Image</button>
+            <button onclick="deleteCoupon('${c.id}')" class="text-red-600 hover:underline font-medium">Delete</button>
           </div>
         `;
         container.appendChild(card);
-        new QRCode(document.getElementById(`qr-${c.code}`), { text: c.code, width: 100, height: 100 });
+        new QRCode(document.getElementById(`qr-${c.code}`), { text: c.code, width: 110, height: 110 });
       });
     }
 
@@ -263,10 +298,9 @@
       alert(`Coupon code "${code}" copied to clipboard!`);
     }
 
-    // Helper to open snapshot modal using custom pattern.svg background
-    function shareWhatsApp(code, offer) {
+    // Helper to snapshot the exact reference card design for WhatsApp sharing
+    function shareWhatsApp(code, offer, expiry) {
       const decodedOffer = decodeURIComponent(offer);
-      
       const qrContainer = document.getElementById(`qr-${code}`);
       const canvas = qrContainer ? qrContainer.querySelector('canvas') : null;
       const imgElem = qrContainer ? qrContainer.querySelector('img') : null;
@@ -289,38 +323,57 @@
               <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
             </head>
             <body class="bg-gray-100 p-6 flex flex-col items-center justify-center min-h-screen text-center">
-              <div class="space-y-4 max-w-sm w-full">
+              <div class="space-y-4 max-w-xs w-full">
                 
-                <!-- The Snapshot Card Layout targeting pattern.svg -->
-                <div id="captureCard" style="background-image: url('/pattern.svg'); background-size: cover; background-position: center;" class="p-6 rounded-2xl shadow-2xl border border-orange-500/30 flex flex-col items-center space-y-4 relative overflow-hidden">
-                  
-                  <!-- Light overlay so the colorful SVG background shows while text remains crisp -->
-                  <div class="absolute inset-0 bg-white/80 backdrop-blur-[1px]"></div>
+                <!-- Snapshot Card Matching Exact Reference Design -->
+                <div id="captureCard" class="bg-amber-50 border-4 border-red-600 border-dashed p-4 rounded-xl shadow-2xl flex flex-col items-center">
+                  <div class="w-full bg-white border-2 border-red-600 rounded-lg p-4 flex flex-col items-center shadow-sm">
+                    
+                    <div class="w-full bg-red-600 rounded-md p-2.5 text-white flex justify-between items-center shadow mb-3">
+                      <div class="text-center flex-1">
+                        <div class="text-[10px] tracking-widest uppercase font-bold text-red-200">COUPON CODE</div>
+                        <div class="text-lg font-mono font-black tracking-wider text-white">${code}</div>
+                      </div>
+                    </div>
 
-                  <!-- Content -->
-                  <h2 class="relative z-10 text-2xl font-extrabold text-orange-600 tracking-wide">Chicken Nation Coupon</h2>
-                  
-                  <div class="relative z-10 w-full bg-orange-50/95 border border-orange-200 py-3 px-4 rounded-xl shadow-sm">
-                    <span class="text-xl font-mono font-black text-orange-900 tracking-wider">${code}</span>
-                  </div>
-                  
-                  <p class="relative z-10 text-lg font-bold text-gray-800">${decodedOffer}</p>
-                  
-                  <!-- Solid White QR container for 100% scannability -->
-                  <div class="relative z-10 border-2 border-gray-200 p-3 rounded-xl bg-white shadow-md flex justify-center">
-                    <img src="${qrDataUrl}" alt="QR Code" class="w-48 h-48 rounded">
+                    <p class="text-xs font-bold text-gray-900 text-center mb-3">Scan the QR Code or use the code at checkout</p>
+
+                    <div class="w-full flex items-center justify-around border-t border-b border-gray-100 py-3 my-1">
+                      <div class="bg-white p-2 border rounded-lg shadow-inner flex justify-center">
+                        <img src="${qrDataUrl}" alt="QR Code" class="w-28 h-28 rounded">
+                      </div>
+                      <div class="text-center pl-2 border-l border-gray-200">
+                        <span class="text-2xl font-serif italic font-bold text-red-900 block transform -rotate-6">Scan<br>Me!</span>
+                        <div class="w-12 h-1 bg-yellow-400 mx-auto mt-1 rounded-full"></div>
+                      </div>
+                    </div>
+
+                    <div class="w-full bg-red-700 text-white text-center font-bold text-xs py-2 px-3 rounded-md my-3 shadow-sm">
+                      ${decodedOffer}
+                    </div>
+
+                    <div class="w-full flex justify-between items-center pt-2 text-xs font-bold text-red-900 border-t border-gray-200">
+                      <div class="flex items-center space-x-2">
+                        <span class="text-lg">📅</span>
+                        <div>
+                          <span class="text-[10px] uppercase text-gray-500 block">Expires:</span>
+                          <span class="text-red-600 font-extrabold">${expiry}</span>
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 
                 <!-- Action Controls -->
                 <div class="bg-white p-4 rounded-xl shadow border space-y-3">
-                  <button onclick="generateAndDownload()" id="dlBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold text-sm transition shadow">📥 Download Coupon as Image</button>
+                  <button onclick="generateAndDownload()" id="dlBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold text-sm transition shadow">📥 Download Coupon Image</button>
                   
-                  <textarea id="msgBox" readonly class="w-full h-24 p-2 text-xs border rounded-xl bg-gray-50 font-mono">🎉 Chicken Nation Coupon 🎉\n\nCode: ${code}\nOffer: ${decodedOffer}\n\nSave & scan this QR code or show code at our restaurant to redeem!</textarea>
+                  <textarea id="msgBox" readonly class="w-full h-24 p-2 text-xs border rounded-xl bg-gray-50 font-mono">🎉 Chicken Nation Coupon 🎉\n\nCode: ${code}\nOffer: ${decodedOffer}\nExpires: ${expiry}\n\nSave & scan this QR code or show code at our restaurant to redeem!</textarea>
 
                   <button onclick="navigator.clipboard.writeText(document.getElementById('msgBox').value); alert('Message text copied!');" class="w-full bg-gray-800 text-white py-2 rounded-xl font-semibold text-sm hover:bg-gray-900 transition">📋 Copy Message Text</button>
                   
-                  <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(`🎉 *Chicken Nation Coupon* 🎉\n\nCode: *${code}*\nOffer: ${decodedOffer}\n\nSave & scan this QR code or show code at our restaurant to redeem! 🍗`)}" target="_blank" class="block w-full bg-green-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-green-700 text-center transition shadow">💬 Open WhatsApp Chat</a>
+                  <a href="https://api.whatsapp.com/send?text=${encodeURIComponent(`🎉 *Chicken Nation Coupon* 🎉\n\nCode: *${code}*\nOffer: ${decodedOffer}\nExpires: ${expiry}\n\nSave & scan this QR code or show code at our restaurant to redeem! 🍗`)}" target="_blank" class="block w-full bg-green-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-green-700 text-center transition shadow">💬 Open WhatsApp Chat</a>
                 </div>
 
               </div>
@@ -341,11 +394,11 @@
                     link.click();
                     
                     btn.textContent = '✅ Downloaded Successfully!';
-                    setTimeout(() => { btn.textContent = '📥 Download Coupon as Image'; }, 3000);
+                    setTimeout(() => { btn.textContent = '📥 Download Coupon Image'; }, 3000);
                   } catch (err) {
                     console.error(err);
                     alert('Could not generate image.');
-                    btn.textContent = '📥 Download Coupon as Image';
+                    btn.textContent = '📥 Download Coupon Image';
                   }
                 }
               <\/script>
